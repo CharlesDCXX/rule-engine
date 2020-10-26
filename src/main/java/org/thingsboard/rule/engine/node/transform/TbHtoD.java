@@ -13,7 +13,7 @@ public class TbHtoD {
      */
     public String trans(int start, int length, String value, int format){
         String armLengthValue = "";
-        for (int i = start/8 + length /4;i > start; i-=2){
+        for (int i = start/4 + length /4;i > start/4; i-=2){
             armLengthValue = armLengthValue + value.substring(i-2,i);
         }
         String i = Long.parseLong(armLengthValue, format)+"";

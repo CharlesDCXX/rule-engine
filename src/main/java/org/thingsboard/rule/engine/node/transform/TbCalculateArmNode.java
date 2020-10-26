@@ -25,13 +25,13 @@ import org.thingsboard.rule.engine.api.TbNode;
 import org.thingsboard.rule.engine.api.TbNodeConfiguration;
 import org.thingsboard.rule.engine.api.TbNodeException;
 import org.thingsboard.rule.engine.api.util.TbNodeUtils;
+import org.thingsboard.rule.engine.node.entity.*;
 import org.thingsboard.server.common.data.plugin.ComponentType;
 import org.thingsboard.server.common.msg.TbMsg;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static org.thingsboard.rule.engine.api.TbRelationTypes.SUCCESS;
@@ -53,23 +53,23 @@ public class TbCalculateArmNode implements TbNode {
     private TbCalculateSumNodeConfiguration config;
     private String inputKey;
     private String outputKey;
-    private double armL;
-    private int armStart;
-    private int armLength;
-    private double armScalingFactor;
-    private double armOffset;
-    private int armType;
+    private Device arm;
+    private Device angle;
+    private Device range;
+    private Device armHead;
+    private Device load;
 
     @Override
     public void init(TbContext ctx, TbNodeConfiguration configuration) throws TbNodeException {
         this.config = TbNodeUtils.convert(configuration, TbCalculateSumNodeConfiguration.class);
+        arm = config.getArm();
+        angle = config.getAngle();
+        range = config.getRange();
+        armHead = config.getArmHead();
+        load = config.getLoad();
         inputKey = config.getInputKey();
         outputKey = config.getOutputKey();
-        armL = config.getArmL();
-        armStart = config.getArmStart();
-        armLength = config.getArmLength();
-        armScalingFactor = config.getArmScalingFactor();
-        armOffset = config.getArmOffset();
+
     }
 
     @Override
@@ -79,7 +79,9 @@ public class TbCalculateArmNode implements TbNode {
         TbHtoD tbHtoD = new TbHtoD();
         try {
             JsonNode jsonNode = mapper.readTree(msg.getData());
+            ObjectNode objectNode = (ObjectNode)jsonNode;
             Iterator<String> iterator = jsonNode.fieldNames();
+            log.info("--------------转换节点----------------");
             while (iterator.hasNext()) {
                 String field = iterator.next();
                 if (field.startsWith(inputKey) ) {
@@ -87,17 +89,24 @@ public class TbCalculateArmNode implements TbNode {
                     //拿到can_data的value
                     String value = jsonNode.get(field).asText();//00000000a000ac00
                     //得到臂长的十进制数字
-                    String trans = tbHtoD.trans(armStart, armLength, value, 16);
-                    int tranValue = Integer.valueOf(trans);
+                    String trans = tbHtoD.trans(arm.getStart(), arm.getLength(), value, 16);
                     //臂长长度 * 缩放系数 + 偏移量
-                    armL = tranValue * armScalingFactor + armOffset;
-                    log.info(armL+"");
-                    ObjectNode objectNode = (ObjectNode) jsonNode;
+                    arm.setValue( new BigDecimal(trans).multiply(arm.getScalingFactor()).add(arm.getOffset()));
+                    angle.setValue(new BigDecimal(tbHtoD.trans(angle.getStart(), angle.getLength(), value, 16)).multiply(angle.getScalingFactor()).add(angle.getOffset()));
+                    range.setValue(new BigDecimal(tbHtoD.trans(range.getStart(), range.getLength(), value, 16)).multiply(range.getScalingFactor()).add(range.getOffset()));
+                    armHead.setValue(new BigDecimal(tbHtoD.trans(armHead.getStart(), armHead.getLength(), value, 16)).multiply(armHead.getScalingFactor()).add(armHead.getOffset()));
+                    load.setValue(new BigDecimal(tbHtoD.trans(load.getStart(), load.getLength(), value, 16)).multiply(load.getScalingFactor()).add(load.getOffset()));
+                    objectNode.remove("Can_data");
+                    objectNode.put("arm", arm.getValue());
+                    objectNode.put("angle",angle.getValue());
+                    objectNode.put("range",range.getValue());
+                    objectNode.put("armHead",armHead.getValue());
+                    objectNode.put("load",load.getValue());
                     log.info(objectNode.toString());
                 }
             }
             if (hasRecords) {
-                TbMsg newMsg = TbMsg.transformMsg(msg, msg.getType(), msg.getOriginator(), msg.getMetaData(), mapper.writeValueAsString(mapper.createObjectNode().put(outputKey, sum)));
+                TbMsg newMsg = TbMsg.transformMsg(msg, msg.getType(), msg.getOriginator(), msg.getMetaData(), mapper.writeValueAsString(objectNode));
                 ctx.tellNext(newMsg, SUCCESS);
             } else {
                 ctx.tellFailure(msg, new Exception("Message doesn't contains the key: " + inputKey));

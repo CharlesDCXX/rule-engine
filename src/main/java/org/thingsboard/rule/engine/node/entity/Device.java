@@ -4,21 +4,23 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Arm {
+public class Device {
     //臂长
-    private double armL;
+    private BigDecimal value;
     //臂长字节起始位置
-    private int armStart;
+    private int start;
     //臂长字节长度
-    private int armLength;
+    private int length;
     //臂长缩放系数
-    private double armScalingFactor;
+    private BigDecimal scalingFactor;
     //臂长偏移量
-    private double armOffset;
+    private BigDecimal offset;
     //臂长类型
-    private int armType;
+    private int type;
 
 }

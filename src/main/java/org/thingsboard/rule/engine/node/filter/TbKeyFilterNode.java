@@ -58,11 +58,10 @@ public class TbKeyFilterNode implements TbNode {
     @Override
     public void onMsg(TbContext ctx, TbMsg msg) {
         try {
-            log.info("d-----------------------------------------------");
-            log.info(ctx.toString());
-            log.info(mapper.readTree(msg.getData()).asText());
+            log.info("--------------------过滤节点---------------------------");
+            log.info(msg.getMetaData().toString());
             log.info(msg.getData());//{"hello":"1111"}
-            log.info(mapper.readTree(msg.getData()).has(key)+"");//false
+            //log.info(mapper.readTree(msg.getData()).has(key)+"");//false
             Map<String, Object> tmpMap= null;
             try {
                 //将上个节点的数据转换成map
@@ -80,7 +79,7 @@ public class TbKeyFilterNode implements TbNode {
             }else {
                 ctx.tellFailure(msg,new Exception("无此类型"));
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             ctx.tellFailure(msg, e);
         }
     }
